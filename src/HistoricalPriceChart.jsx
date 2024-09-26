@@ -3,7 +3,7 @@ import { Activity } from "lucide-react";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import {
   fillMissingDates,
-  // generateRandomChartData,
+  generateRandomChartData,
   filterChartData,
   generatePriceRange,
   generateXAxisTicks,
@@ -24,11 +24,11 @@ import {
 
 export const description = "A step area chart";
 
-// const startDate = "2024-5-10";
-// const endDate = "2024-09-15";
-// const rawData = generateRandomChartData(startDate, endDate);
+const startDate = "2024-5-10";
+const endDate = "2024-09-15";
+const rawData = generateRandomChartData(startDate, endDate);
 
-const rawData=[];
+// const rawData=[];
 
 const allData = fillMissingDates(rawData);
 
