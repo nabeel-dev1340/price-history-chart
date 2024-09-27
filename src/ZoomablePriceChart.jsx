@@ -1,5 +1,4 @@
-"use client";
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { Activity } from "lucide-react";
 import {
   Area,
@@ -11,7 +10,7 @@ import {
 } from "recharts";
 import {
   fillMissingDates,
-  // generateRandomChartData,
+  generateRandomChartData,
   filterChartData,
   generatePriceRange,
   generateXAxisTicks,
@@ -29,15 +28,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 
 export const description = "A step area chart with zoom functionality";
 
-// const startDate = "2024-05-10";
-// const endDate = "2024-09-15";
-// const rawData = generateRandomChartData(startDate, endDate);
+const startDate = "2024-05-10";
+const endDate = "2024-09-15";
+const rawData = generateRandomChartData(startDate, endDate);
 
-const rawData = [];
+// const rawData=[]
+
 const allData = fillMissingDates(rawData);
 
 const chartConfig = {
@@ -55,27 +54,45 @@ export function ZoomableAreaChart() {
   const [startTime, setStartTime] = useState(null);
   const [endTime, setEndTime] = useState(null);
   const [isSelecting, setIsSelecting] = useState(false);
+  const prevSelectedOptionRef = useRef(selectedOption);
 
-  // Memoized filtered data based on selected option and zoom range
+  // Memoized filtered data based on selected option
   const filteredData = useMemo(() => {
     let data = filterChartData(allData, selectedOption);
-    if (startTime && endTime) {
-      data = data.filter(
+    setEndTime(null)
+    setStartTime(null)
+    return data.length > 1 ? data : allData.slice(0, 2);
+  }, [selectedOption]);
+
+  // Apply zoom to filtered data
+  const zoomedData = useMemo(() => {
+    if (
+      startTime &&
+      endTime &&
+      prevSelectedOptionRef.current === selectedOption
+    ) {
+      return filteredData.filter(
         (item) => item.date >= startTime && item.date <= endTime
       );
     }
-    return data.length > 1 ? data : allData.slice(0, 2);
-  }, [selectedOption, startTime, endTime]); 
+    return filteredData;
+  }, [filteredData, startTime, endTime, selectedOption]);
+
+  // Update prevSelectedOptionRef when selectedOption changes
+  useEffect(() => {
+    prevSelectedOptionRef.current = selectedOption;
+  }, [selectedOption]);
 
   // Extracting prices to determine Y-axis range
-  const prices = allData.map((item) => item.price);
+  const prices = zoomedData.map((item) => item.price);
   const maxPrice = Math.max(...prices);
 
   // Generating Y-axis ticks
   const priceRangeArray = generatePriceRange(0, maxPrice, 10);
 
-  // Generating X-axis ticks based on filtered data
-  const xAxisTicks = generateXAxisTicks(filteredData, selectedOption);
+  // Generating X-axis ticks based on zoomed data
+  const xAxisTicks = generateXAxisTicks(zoomedData, selectedOption);
+  console.log(xAxisTicks)
 
   // Handle Mouse Events for Selection
   const handleMouseDown = (e) => {
@@ -106,15 +123,6 @@ export function ZoomableAreaChart() {
   const handleReset = () => {
     setStartTime(null);
     setEndTime(null);
-  };
-
-  // Formatting X-Axis Labels
-  const formatXAxis = (tickItem) => {
-    const date = new Date(tickItem);
-    return date.toLocaleDateString("en-US", {
-      month: "short",
-      year: "numeric",
-    });
   };
 
   return (
@@ -155,13 +163,13 @@ export function ZoomableAreaChart() {
               style={{
                 display: "inline-flex",
                 alignItems: "center",
-                borderRadius: "14px", // 6px equivalent to rounded-md
+                borderRadius: "14px",
                 border: "1px solid transparent",
-                padding: "2px 10px", // px-[15px] py-[5px]
-                fontSize: "10px", // text-xs
-                fontWeight: 600, // font-semibold
+                padding: "2px 10px",
+                fontSize: "10px",
+                fontWeight: 600,
                 backgroundColor: "rgb(50 50 54)",
-                color: "white", // Text color set to white
+                color: "white",
                 transition: "background-color 0.2s",
                 cursor: "pointer",
                 outline: "none",
@@ -217,7 +225,7 @@ export function ZoomableAreaChart() {
       <CardContent>
         <ChartContainer config={chartConfig}>
           <AreaChart
-            data={filteredData}
+            data={zoomedData}
             margin={{
               left: 12,
               right: 12,
@@ -233,8 +241,11 @@ export function ZoomableAreaChart() {
               tickLine={false}
               axisLine={false}
               tickMargin={8}
-              ticks={xAxisTicks}
-              tickFormatter={formatXAxis}
+              ticks={xAxisTicks.map((tick) => tick.date)}
+              tickFormatter={(tick) => {
+                const matchingTick = xAxisTicks.find((t) => t.date === tick);
+                return matchingTick ? matchingTick.label : "";
+              }}
             />
             <YAxis
               dataKey="price"

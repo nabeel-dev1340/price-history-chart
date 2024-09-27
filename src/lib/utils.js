@@ -123,7 +123,44 @@ export function filterChartData(allData, option) {
 
   return filteredData;
 }
+// Helper functions
+function formatDateMonthDay(date) {
+  const months = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+  ];
+  return `${months[date.getMonth()]} ${date.getDate()}`;
+}
 
+function formatDateMonthYear(date) {
+  const months = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+  ];
+  return `${months[date.getMonth()]} ${date.getFullYear()}`;
+}
+
+// Main function to generate X-axis ticks
 export function generateXAxisTicks(filteredData, selectedOption) {
   const dataLength = filteredData.length;
 
@@ -134,11 +171,15 @@ export function generateXAxisTicks(filteredData, selectedOption) {
   const lastDate = new Date(Math.max(...dates));
 
   // Calculate the number of months between first and last date
-  const monthsDiff = (lastDate.getFullYear() - firstDate.getFullYear()) * 12 + 
-                     (lastDate.getMonth() - firstDate.getMonth());
+  const monthsDiff =
+    (lastDate.getFullYear() - firstDate.getFullYear()) * 12 +
+    (lastDate.getMonth() - firstDate.getMonth());
 
   if (selectedOption === "option-one") {
     // 3 months, so we want 3 ticks
+    if (monthsDiff < 2) {
+      return generateFourDayTicks(firstDate, lastDate);
+    }
     return generateThreeMonthTicks(firstDate, lastDate);
   } else {
     // Check if it's a full year
@@ -148,10 +189,43 @@ export function generateXAxisTicks(filteredData, selectedOption) {
       return generateFullYearTicks(firstDate);
     } else if (monthsDiff >= 4) {
       return generateFourTicks(firstDate, lastDate);
+    } else if (monthsDiff < 2) {
+      return generateFourDayTicks(firstDate, lastDate);
     } else {
       return generateAllMonthTicks(firstDate, lastDate);
     }
   }
+}
+
+function generateFourDayTicks(startDate, endDate) {
+  const ticks = [];
+  const totalMilliseconds = endDate - startDate;
+  const daysDifference =
+    Math.ceil(totalMilliseconds / (1000 * 60 * 60 * 24)) + 1;
+
+  // If 4 or fewer days, generate a tick for each day
+  if (daysDifference <= 4) {
+    for (let i = 0; i < daysDifference; i++) {
+      const tickDate = new Date(startDate.getTime() + i * 24 * 60 * 60 * 1000);
+      ticks.push({
+        date: tickDate.toISOString().split("T")[0],
+        label: formatDateMonthDay(tickDate),
+      });
+    }
+  } else {
+    // Original logic for more than 4 days
+    for (let i = 0; i < 4; i++) {
+      const tickDate = new Date(
+        startDate.getTime() + (i / 3) * totalMilliseconds
+      );
+      ticks.push({
+        date: tickDate.toISOString().split("T")[0],
+        label: formatDateMonthDay(tickDate),
+      });
+    }
+  }
+
+  return ticks;
 }
 
 function generateThreeMonthTicks(startDate, endDate) {
@@ -165,7 +239,10 @@ function generateThreeMonthTicks(startDate, endDate) {
     const currentDate = new Date(adjustedStartDate);
     currentDate.setMonth(adjustedStartDate.getMonth() + i);
     if (currentDate <= adjustedEndDate) {
-      ticks.push(currentDate.toISOString().split("T")[0]);
+      ticks.push({
+        date: currentDate.toISOString().split("T")[0],
+        label: formatDateMonthYear(currentDate),
+      });
     }
   }
 
@@ -174,11 +251,23 @@ function generateThreeMonthTicks(startDate, endDate) {
 
 function generateFullYearTicks(startDate) {
   const months = [];
-  const tickStartDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 1);
+  const tickStartDate = new Date(
+    startDate.getFullYear(),
+    startDate.getMonth() + 1,
+    1
+  );
   for (let i = 0; i < 12; i += 3) {
-    months.push(new Date(tickStartDate.getFullYear(), tickStartDate.getMonth() + i, 1));
+    const date = new Date(
+      tickStartDate.getFullYear(),
+      tickStartDate.getMonth() + i,
+      1
+    );
+    months.push({
+      date: date.toISOString().split("T")[0],
+      label: formatDateMonthYear(date),
+    });
   }
-  return months.map((date) => date.toISOString().split("T")[0]);
+  return months;
 }
 
 function generateFourTicks(startDate, endDate) {
@@ -187,8 +276,13 @@ function generateFourTicks(startDate, endDate) {
   const interval = totalDays / 5; // 5 intervals for 4 ticks with cushion
 
   for (let i = 1; i <= 4; i++) {
-    const tickDate = new Date(startDate.getTime() + i * interval * 24 * 60 * 60 * 1000);
-    ticks.push(tickDate.toISOString().split("T")[0]);
+    const tickDate = new Date(
+      startDate.getTime() + i * interval * 24 * 60 * 60 * 1000
+    );
+    ticks.push({
+      date: tickDate.toISOString().split("T")[0],
+      label: formatDateMonthYear(tickDate),
+    });
   }
 
   return ticks;
@@ -199,7 +293,10 @@ function generateAllMonthTicks(startDate, endDate) {
   let currentDate = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
 
   while (currentDate <= endDate) {
-    ticks.push(currentDate.toISOString().split("T")[0]);
+    ticks.push({
+      date: currentDate.toISOString().split("T")[0],
+      label: formatDateMonthYear(currentDate),
+    });
     currentDate.setMonth(currentDate.getMonth() + 1);
   }
 
