@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from "react";
-import { Activity } from "lucide-react";
+import { Activity, X } from "lucide-react";
 import {
   Area,
   AreaChart,
@@ -28,14 +28,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import ExpandIcon from "./Icons/ExpandIcon";
 
-export const description = "A step area chart with zoom functionality";
+export const description =
+  "A step area chart with zoom functionality and expand modal";
 
 const startDate = "2024-05-10";
 const endDate = "2024-09-15";
 const rawData = generateRandomChartData(startDate, endDate);
-
-// const rawData=[]
 
 const allData = fillMissingDates(rawData);
 
@@ -47,7 +47,32 @@ const chartConfig = {
   },
 };
 
-export function ZoomableAreaChart() {
+const Modal = ({ isOpen, onClose, children }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div
+      id="price-chart-expanded"
+      className="absolute top-[120px] right-[600px] z-50"
+    >
+      <div
+        className="flex flex-col items-center bg-white rounded-[12px] relative border border-slate-200"
+        style={{ width: "1100px", paddingTop: "10px" }}
+      >
+        <button
+          onClick={onClose}
+          style={{ marginRight: "10px", marginBottom: "10px" }}
+          className="self-end text-gray-500 hover:text-gray-700 mr-[10px]"
+        >
+          <X size={24} />
+        </button>
+        {children}
+      </div>
+    </div>
+  );
+};
+
+const ChartComponent = ({ isExpanded = false, onExpand }) => {
   const [selectedOption, setSelectedOption] = useState("option-two");
   const [refAreaLeft, setRefAreaLeft] = useState(null);
   const [refAreaRight, setRefAreaRight] = useState(null);
@@ -56,15 +81,13 @@ export function ZoomableAreaChart() {
   const [isSelecting, setIsSelecting] = useState(false);
   const prevSelectedOptionRef = useRef(selectedOption);
 
-  // Memoized filtered data based on selected option
   const filteredData = useMemo(() => {
     let data = filterChartData(allData, selectedOption);
-    setEndTime(null)
-    setStartTime(null)
+    setEndTime(null);
+    setStartTime(null);
     return data.length > 1 ? data : allData.slice(0, 2);
   }, [selectedOption]);
 
-  // Apply zoom to filtered data
   const zoomedData = useMemo(() => {
     if (
       startTime &&
@@ -78,23 +101,17 @@ export function ZoomableAreaChart() {
     return filteredData;
   }, [filteredData, startTime, endTime, selectedOption]);
 
-  // Update prevSelectedOptionRef when selectedOption changes
   useEffect(() => {
     prevSelectedOptionRef.current = selectedOption;
   }, [selectedOption]);
 
-  // Extracting prices to determine Y-axis range
   const prices = zoomedData.map((item) => item.price);
   const maxPrice = Math.max(...prices);
 
-  // Generating Y-axis ticks
   const priceRangeArray = generatePriceRange(0, maxPrice, 10);
 
-  // Generating X-axis ticks based on zoomed data
   const xAxisTicks = generateXAxisTicks(zoomedData, selectedOption);
-  console.log(xAxisTicks)
 
-  // Handle Mouse Events for Selection
   const handleMouseDown = (e) => {
     if (e.activeLabel) {
       setRefAreaLeft(e.activeLabel);
@@ -119,14 +136,15 @@ export function ZoomableAreaChart() {
     setIsSelecting(false);
   };
 
-  // Reset Zoom to Default View
   const handleReset = () => {
     setStartTime(null);
     setEndTime(null);
   };
 
+  const cardPadding = isExpanded ? "0" : "10px";
+
   return (
-    <Card style={{ padding: "10px", height: "190px" }}>
+    <Card style={{ padding: cardPadding }}>
       <CardHeader
         style={{
           display: "flex",
@@ -178,15 +196,28 @@ export function ZoomableAreaChart() {
               Reset
             </div>
           )}
+          {!isExpanded && (
+            <button
+              onClick={onExpand}
+              size="sm"
+              style={{ padding: "4px", borderRadius: "5px" }}
+              className="border border-slate-300"
+              id="price-chart-modal"
+            >
+              {/* <ExternalLink size={14} /> */}
+              <ExpandIcon size={17} />
+            </button>
+          )}
           <Select value={selectedOption} onValueChange={setSelectedOption}>
             <SelectTrigger
               style={{
-                width: "120px",
+                width: "100px",
                 borderRadius: "0.5rem",
                 marginLeft: "auto",
                 fontFamily: "Poppins",
                 padding: "5px",
-                fontSize: "12px",
+                fontSize: "10px",
+                height: "30px",
               }}
               aria-label="Select a value"
             >
@@ -196,24 +227,24 @@ export function ZoomableAreaChart() {
               style={{
                 borderRadius: "0.75rem",
                 fontFamily: "Poppins",
-                width: "135px",
+                width: "120px",
               }}
             >
               <SelectItem
                 value="option-one"
-                style={{ borderRadius: "0.5rem", fontSize: "12px" }}
+                style={{ borderRadius: "0.5rem", fontSize: "10px" }}
               >
                 3 months
               </SelectItem>
               <SelectItem
                 value="option-two"
-                style={{ borderRadius: "0.5rem", fontSize: "12px" }}
+                style={{ borderRadius: "0.5rem", fontSize: "10px" }}
               >
                 Year
               </SelectItem>
               <SelectItem
                 value="option-three"
-                style={{ borderRadius: "0.5rem", fontSize: "12px" }}
+                style={{ borderRadius: "0.5rem", fontSize: "10px" }}
               >
                 {`All (${allData?.length} Days)`}
               </SelectItem>
@@ -222,8 +253,12 @@ export function ZoomableAreaChart() {
         </div>
       </CardHeader>
 
-      <CardContent>
-        <ChartContainer config={chartConfig}>
+      <CardContent style={{ userSelect: "none" }}>
+        <ChartContainer
+          config={chartConfig}
+          width={isExpanded ? "1100px" : "500px"}
+          height={isExpanded ? "400px" : "120px"}
+        >
           <AreaChart
             data={zoomedData}
             margin={{
@@ -278,5 +313,23 @@ export function ZoomableAreaChart() {
         </ChartContainer>
       </CardContent>
     </Card>
+  );
+};
+
+export function ZoomableAreaChart() {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  return (
+    <>
+      <ChartComponent
+        onExpand={() => {
+          console.log("model oe");
+          setIsModalOpen(true);
+        }}
+      />
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
+        <ChartComponent isExpanded={true} />
+      </Modal>
+    </>
   );
 }
