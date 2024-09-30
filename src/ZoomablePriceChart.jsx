@@ -33,8 +33,8 @@ import ExpandIcon from "./Icons/ExpandIcon";
 export const description =
   "A step area chart with zoom functionality and expand modal";
 
-const startDate = "2024-05-10";
-const endDate = "2024-09-15";
+const startDate = "2021-06-03";
+const endDate = "2024-09-24";
 const rawData = generateRandomChartData(startDate, endDate);
 
 const allData = fillMissingDates(rawData);
@@ -57,7 +57,7 @@ const Modal = ({ isOpen, onClose, children }) => {
     >
       <div
         className="flex flex-col items-center bg-white rounded-[12px] relative border border-slate-200"
-        style={{ width: "1100px", paddingTop: "10px" }}
+        style={{ width: "1100px", paddingTop: "10px", paddingBottom: "10px" }}
       >
         <button
           onClick={onClose}
@@ -110,7 +110,9 @@ const ChartComponent = ({ isExpanded = false, onExpand }) => {
 
   const priceRangeArray = generatePriceRange(0, maxPrice, 10);
 
-  const xAxisTicks = generateXAxisTicks(zoomedData, selectedOption);
+  const xAxisTicks = isExpanded
+    ? generateXAxisTicks(zoomedData, selectedOption, 12)
+    : generateXAxisTicks(zoomedData, selectedOption);
 
   const handleMouseDown = (e) => {
     if (e.activeLabel) {

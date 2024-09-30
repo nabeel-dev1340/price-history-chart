@@ -161,7 +161,7 @@ function formatDateMonthYear(date) {
 }
 
 // Main function to generate X-axis ticks
-export function generateXAxisTicks(filteredData, selectedOption) {
+export function generateXAxisTicks(filteredData, selectedOption, interval = 4) {
   const dataLength = filteredData.length;
 
   if (dataLength === 0) return [];
@@ -176,35 +176,35 @@ export function generateXAxisTicks(filteredData, selectedOption) {
     (lastDate.getMonth() - firstDate.getMonth());
 
   if (selectedOption === "option-one") {
-    // 3 months, so we want 3 ticks
+    // 3 months, so we want interval ticks
     if (monthsDiff < 2) {
-      return generateFourDayTicks(firstDate, lastDate);
+      return generateDayTicks(firstDate, lastDate, interval);
     }
-    return generateThreeMonthTicks(firstDate, lastDate);
+
+    return generateAllMonthTicks(firstDate, lastDate, interval);
   } else {
     // Check if it's a full year
     const isFullYear = monthsDiff >= 11 && monthsDiff <= 13;
 
     if (isFullYear) {
-      return generateFullYearTicks(firstDate);
-    } else if (monthsDiff >= 4) {
-      return generateFourTicks(firstDate, lastDate);
-    } else if (monthsDiff < 2) {
-      return generateFourDayTicks(firstDate, lastDate);
+      return generateFullYearTicks(firstDate, interval);
+    } else if (monthsDiff >= interval) {
+      return generateIntervalTicks(firstDate, lastDate, interval);
+    } else if (monthsDiff <= (interval/2)) {
+      return generateDayTicks(firstDate, lastDate, interval);
     } else {
-      return generateAllMonthTicks(firstDate, lastDate);
+      return generateAllMonthTicks(firstDate, lastDate,interval);
     }
   }
 }
-
-function generateFourDayTicks(startDate, endDate) {
+function generateDayTicks(startDate, endDate, interval) {
   const ticks = [];
   const totalMilliseconds = endDate - startDate;
   const daysDifference =
     Math.ceil(totalMilliseconds / (1000 * 60 * 60 * 24)) + 1;
 
-  // If 4 or fewer days, generate a tick for each day
-  if (daysDifference <= 4) {
+  // If interval or fewer days, generate a tick for each day
+  if (daysDifference <= interval) {
     for (let i = 0; i < daysDifference; i++) {
       const tickDate = new Date(startDate.getTime() + i * 24 * 60 * 60 * 1000);
       ticks.push({
@@ -213,10 +213,10 @@ function generateFourDayTicks(startDate, endDate) {
       });
     }
   } else {
-    // Original logic for more than 4 days
-    for (let i = 0; i < 4; i++) {
+    // Generate ticks based on the interval
+    for (let i = 0; i < interval; i++) {
       const tickDate = new Date(
-        startDate.getTime() + (i / 3) * totalMilliseconds
+        startDate.getTime() + (i / (interval - 1)) * totalMilliseconds
       );
       ticks.push({
         date: tickDate.toISOString().split("T")[0],
@@ -228,16 +228,22 @@ function generateFourDayTicks(startDate, endDate) {
   return ticks;
 }
 
-function generateThreeMonthTicks(startDate, endDate) {
+function generateMonthTicks(startDate, endDate, interval) {
   const ticks = [];
   const adjustedStartDate = new Date(startDate);
   adjustedStartDate.setDate(startDate.getDate() + 10);
   const adjustedEndDate = new Date(endDate);
   adjustedEndDate.setDate(endDate.getDate() - 10);
 
-  for (let i = 0; i < 3; i++) {
+  const totalMonths =
+    (adjustedEndDate.getFullYear() - adjustedStartDate.getFullYear()) * 12 +
+    (adjustedEndDate.getMonth() - adjustedStartDate.getMonth());
+
+  const monthStep = Math.max(1, Math.floor(totalMonths / (interval - 1)));
+
+  for (let i = 0; i < interval; i++) {
     const currentDate = new Date(adjustedStartDate);
-    currentDate.setMonth(adjustedStartDate.getMonth() + i);
+    currentDate.setMonth(adjustedStartDate.getMonth() + i * monthStep);
     if (currentDate <= adjustedEndDate) {
       ticks.push({
         date: currentDate.toISOString().split("T")[0],
@@ -249,14 +255,16 @@ function generateThreeMonthTicks(startDate, endDate) {
   return ticks;
 }
 
-function generateFullYearTicks(startDate) {
+function generateFullYearTicks(startDate, interval) {
   const months = [];
   const tickStartDate = new Date(
     startDate.getFullYear(),
     startDate.getMonth() + 1,
     1
   );
-  for (let i = 0; i < 12; i += 3) {
+  const monthStep = Math.max(1, Math.floor(12 / interval));
+
+  for (let i = 0; i < 12; i += monthStep) {
     const date = new Date(
       tickStartDate.getFullYear(),
       tickStartDate.getMonth() + i,
@@ -270,14 +278,14 @@ function generateFullYearTicks(startDate) {
   return months;
 }
 
-function generateFourTicks(startDate, endDate) {
+function generateIntervalTicks(startDate, endDate, interval) {
   const ticks = [];
   const totalDays = (endDate - startDate) / (24 * 60 * 60 * 1000);
-  const interval = totalDays / 5; // 5 intervals for 4 ticks with cushion
+  const tickInterval = totalDays / (interval - 1);
 
-  for (let i = 1; i <= 4; i++) {
+  for (let i = 0; i < interval; i++) {
     const tickDate = new Date(
-      startDate.getTime() + i * interval * 24 * 60 * 60 * 1000
+      startDate.getTime() + i * tickInterval * 24 * 60 * 60 * 1000
     );
     ticks.push({
       date: tickDate.toISOString().split("T")[0],
@@ -288,16 +296,34 @@ function generateFourTicks(startDate, endDate) {
   return ticks;
 }
 
-function generateAllMonthTicks(startDate, endDate) {
+function generateAllMonthTicks(startDate, endDate, interval) {
   const ticks = [];
-  let currentDate = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
+  if (interval > 4) {
+    const totalMilliseconds = endDate - startDate;
+    // Generate ticks based on the interval
+    for (let i = 0; i < interval; i++) {
+      const tickDate = new Date(
+        startDate.getTime() + (i / (interval - 1)) * totalMilliseconds
+      );
+      ticks.push({
+        date: tickDate.toISOString().split("T")[0],
+        label: formatDateMonthDay(tickDate),
+      });
+    }
+  } else {
+    let currentDate = new Date(
+      startDate.getFullYear(),
+      startDate.getMonth(),
+      1
+    );
 
-  while (currentDate <= endDate) {
-    ticks.push({
-      date: currentDate.toISOString().split("T")[0],
-      label: formatDateMonthYear(currentDate),
-    });
-    currentDate.setMonth(currentDate.getMonth() + 1);
+    while (currentDate <= endDate) {
+      ticks.push({
+        date: currentDate.toISOString().split("T")[0],
+        label: formatDateMonthYear(currentDate),
+      });
+      currentDate.setMonth(currentDate.getMonth() + 1);
+    }
   }
 
   return ticks;
